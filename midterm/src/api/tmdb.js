@@ -1,33 +1,46 @@
-const API_KEY = import.meta.env.VITE_TMDB_KEY;
-const BASE = "https://www.omdbapi.com/?apikey=22fd57fc&t=Interstellar";
-const DEFAULT_PARAMS = new URLSearchParams({
-  api_key: API_KEY,
-  language: "en-US",
-  region: "US"
-});
+// src/api/omdb.js
 
-async function request(path, params = {}) {
-  const search = new URLSearchParams(DEFAULT_PARAMS);
+// Лучше вынести ключ в env: VITE_OMDB_KEY
+const API_KEY = import.meta.env?.VITE_OMDB_KEY || '22fd57fc';
+const BASE = 'https://www.omdbapi.com/';
+
+async function request(params = {}) {
+  const search = new URLSearchParams({ apikey: API_KEY });
   for (const [k, v] of Object.entries(params)) {
-    if (v != null && v !== "") search.set(k, v);
+    if (v != null && v !== '') search.set(k, String(v));
   }
-  const url = `${BASE}${path}?${search.toString()}`;
 
-  // маленький кэш, чтобы не долбить API при возвратах назад
+  const url = `${BASE}?${search.toString()}`;
+
+  // Простой кэш на время сессии
   const cached = sessionStorage.getItem(url);
   if (cached) return JSON.parse(cached);
 
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`TMDB ${res.status}`);
+  if (!res.ok) throw new Error(`OMDb HTTP ${res.status}`);
+
   const data = await res.json();
+  if (data.Response === 'False') {
+    // Пример: { Response: "False", Error: "Movie not found!" }
+    throw new Error(`OMDb: ${data.Error || 'Unknown error'}`);
+  }
+
   sessionStorage.setItem(url, JSON.stringify(data));
   return data;
 }
 
-export const tmdb = {
-  trending: (page = 1) => request("/trending/movie/week", { page }),
-  searchMovies: (query, page = 1) => request("/search/movie", { query, page, include_adult: false }),
-  movieDetails: (id) => request(`/movie/${id}`),
-  movieCredits: (id) => request(`/movie/${id}/credits`)
-};
+export const omdb = {
+  /**
+   * Поиск (пагинация поддерживается: page=1..)
+   * type: 'movie' | 'series' | 'episode' (опционально)
+   * y: год (опционально)
+   */
+  searchMovies: (query, page = 1, type, y) =>
+    request({ s: query, page, type, y }),
 
+  /** Подробно по IMDb ID */
+  getById: (imdbID) => request({ i: imdbID, plot: 'full' }),
+
+  /** Подробно по названию (и, при желании, году) */
+  getByTitle: (title, y) => request({ t: title, y, plot: 'full' }),
+};
