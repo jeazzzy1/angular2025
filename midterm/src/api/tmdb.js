@@ -1,5 +1,5 @@
 const API_KEY = import.meta.env.VITE_TMDB_KEY;
-const BASE = "https://api.themoviedb.org/3";
+const BASE = "https://www.omdbapi.com/?apikey=22fd57fc&t=Interstellar";
 const DEFAULT_PARAMS = new URLSearchParams({
   api_key: API_KEY,
   language: "en-US",
@@ -30,3 +30,4 @@ export const tmdb = {
   movieDetails: (id) => request(`/movie/${id}`),
   movieCredits: (id) => request(`/movie/${id}/credits`)
 };
+
